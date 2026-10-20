@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#1B2224">
+<title>Werkstatt</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧱</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  color-scheme: light;
+  --plaster:#E4E6E2;
+  --board:#F5F6F3;
+  --white:#FFFFFF;
+  --ink:#1B2224;
+  --steel:#5E6A70;
+  --line:#C3C8C4;
+  --signal:#F2B705;
+  --signal-d:#D9A300;
+  --ok:#2F7D4F;
+  --warn:#B4400D;
+  --cond:'Barlow Condensed','Arial Narrow',Arial,sans-serif;
+  --body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{background:var(--plaster);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.4;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+input,select,textarea{-webkit-user-select:text;user-select:text}
+#app{height:100%}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+h1,h2,h3{font-family:var(--cond);font-weight:700;margin:0;line-height:1.05}
+
+/* ---------- Buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:10px;border:2px solid var(--ink);background:var(--white);font-weight:600;font-size:17px}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--signal);border-color:var(--signal-d);color:var(--ink);font-family:var(--cond);font-size:22px;font-weight:700}
+.btn.primary:disabled{background:#E8E6DF;border-color:var(--line);color:#9AA2A5;cursor:not-allowed}
+.btn.dark{background:var(--ink);color:var(--board);border-color:var(--ink)}
+.btn.ghost{border-color:var(--line);background:transparent}
+.btn.small{min-height:40px;padding:0 14px;font-size:15px}
+.btn.danger{border-color:#E3B9A6;color:var(--warn);background:var(--white)}
+
+/* ---------- Home ---------- */
+.home{display:grid;grid-template-columns:1.05fr 1fr;height:100%}
+.home-left{position:relative;display:flex;flex-direction:column;padding:48px 48px 0;overflow:hidden}
+.home-left h1{font-size:clamp(46px,6.2vw,76px);letter-spacing:-.5px}
+.home-left p{font-size:20px;color:var(--steel);max-width:30ch;margin:14px 0 0}
+.home-date{font-family:var(--cond);font-size:20px;font-weight:600;color:var(--steel);margin-bottom:18px}
+.stack{margin-top:auto;padding-bottom:0;display:flex;flex-direction:column;align-items:flex-start}
+.stack .sheet{height:22px;border-radius:2px 2px 1px 1px;background:linear-gradient(to bottom,#FBFAF7 0 3px,var(--pc) 3px calc(100% - 3px),#FBFAF7 calc(100% - 3px));box-shadow:0 1px 0 rgba(27,34,36,.28)}
+.stack .pallet{height:34px;width:min(92%,520px);background:repeating-linear-gradient(90deg,#3A4246 0 70px,#2A3134 70px 92px);margin-top:2px}
+.home-right{background:var(--board);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;border-left:2px solid var(--line)}
+.pad-label{font-family:var(--cond);font-size:26px;font-weight:600;margin-bottom:18px}
+.dots{display:flex;gap:14px;height:28px;margin-bottom:10px}
+.dots span{width:26px;height:26px;border:3px solid var(--ink);border-radius:4px}
+.dots span.on{background:var(--ink)}
+.pin-msg{height:26px;font-weight:600;color:var(--warn);margin-bottom:12px}
+.pin-msg.info{color:var(--steel)}
+.keypad{display:grid;grid-template-columns:repeat(3,96px);gap:12px}
+.key{height:84px;border-radius:12px;border:2px solid var(--line);background:var(--white);font-family:var(--cond);font-size:38px;font-weight:600}
+.key:active{background:var(--ink);color:var(--board);border-color:var(--ink)}
+.key.fn{font-family:var(--body);font-size:17px;font-weight:600;color:var(--steel)}
+.net{margin-top:26px;font-size:15px;color:var(--steel);display:flex;align-items:center;gap:8px}
+.net i{width:10px;height:10px;border-radius:50%;background:var(--ok);display:inline-block}
+.net.off i{background:var(--warn)}
+.banner{background:#FBE3D6;color:var(--warn);border:2px solid #EBB79C;border-radius:10px;padding:12px 16px;font-weight:600;font-size:15px;max-width:420px;margin-top:18px}
+
+/* ---------- Flow top bar ---------- */
+.flow{display:flex;flex-direction:column;height:100%}
+.bar{display:flex;align-items:center;gap:16px;padding:14px 24px;background:var(--ink);color:var(--board);position:sticky;top:0;z-index:5}
+.bar .team{display:flex;align-items:center;gap:10px;font-family:var(--cond);font-size:24px;font-weight:600}
+.bar .team i{width:18px;height:18px;border-radius:3px;display:inline-block;border:2px solid rgba(255,255,255,.5)}
+.bar .step{flex:1;font-size:16px;color:#AEB7BA}
+.bar .btn{min-height:46px;border-color:#55636A;background:transparent;color:var(--board)}
+.flow-body{flex:1;overflow:auto;padding:24px;-webkit-overflow-scrolling:touch}
+.flow-body h2{font-size:40px;margin-bottom:16px}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.search{flex:1;min-width:240px;height:58px;border-radius:10px;border:2px solid var(--line);background:var(--white);padding:0 18px;font:inherit;font-size:20px}
+.seg{display:inline-flex;border:2px solid var(--ink);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:var(--white);min-height:54px;padding:0 18px;font-weight:600}
+.seg button.on{background:var(--ink);color:var(--board)}
+
+/* ---------- Objects ---------- */
+.objlist{display:flex;flex-direction:column;gap:10px;padding-bottom:20px}
+.obj{display:grid;grid-template-columns:120px 1fr auto;gap:18px;align-items:center;text-align:left;background:var(--white);border:2px solid var(--line);border-radius:12px;padding:16px 20px;min-height:86px}
+.obj:active{border-color:var(--ink)}
+.obj-date{font-family:var(--cond);font-size:22px;font-weight:600;line-height:1.1}
+.obj-date small{display:block;font-family:var(--body);font-size:14px;font-weight:500;color:var(--steel)}
+.obj-date.now{color:var(--ok)}
+.obj-name{font-size:21px;font-weight:700;line-height:1.2}
+.obj-sub{color:var(--steel);font-size:16px;margin-top:2px}
+.obj-meta{text-align:right;font-size:15px;color:var(--steel)}
+.obj-meta b{display:block;color:var(--ink);font-family:var(--cond);font-size:19px;font-weight:600}
+.empty{background:var(--board);border:2px dashed var(--line);border-radius:12px;padding:28px;text-align:center;color:var(--steel);font-size:18px}
+.freebtn{width:100%;margin-top:6px;min-height:70px;border-radius:12px;border:2px dashed var(--steel);background:transparent;font-size:19px;font-weight:600}
+
+/* ---------- Plates ---------- */
+.plates{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;padding-bottom:20px}
+.plate{background:var(--white);border:2px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.plate.has{border:3px solid var(--ink)}
+.plate-hit{border:0;background:transparent;text-align:left;padding:0;display:flex;flex-direction:column}
+.edge{height:30px;background:linear-gradient(to bottom,#FBFAF7 0 4px,var(--pc) 4px calc(100% - 4px),#FBFAF7 calc(100% - 4px));border-bottom:1px solid var(--line)}
+.plate-info{display:flex;justify-content:space-between;align-items:flex-end;padding:12px 16px 6px}
+.plate-name{font-size:19px;font-weight:700;line-height:1.15}
+.plate-thk{font-family:var(--cond);font-size:26px;font-weight:600;display:block}
+.plate-m2{font-size:13px;color:var(--steel)}
+.plate-count{font-family:var(--cond);font-size:64px;font-weight:700;line-height:.9;min-width:60px;text-align:right}
+.plate:not(.has) .plate-count{color:#C9CDCA}
+.plate-ctl{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;padding:10px 12px 12px}
+.plate-ctl button{height:56px;border-radius:9px;border:2px solid var(--line);background:var(--board);font-family:var(--cond);font-size:26px;font-weight:600}
+.plate-ctl button.plus{background:var(--ink);color:var(--board);border-color:var(--ink)}
+.plate-ctl button:active{transform:translateY(1px)}
+.sumbar{display:flex;align-items:center;gap:20px;padding:14px 24px;background:var(--board);border-top:2px solid var(--line)}
+.sumbar .sum{flex:1;min-width:0}
+.sum-big{font-family:var(--cond);font-size:30px;font-weight:700;line-height:1}
+.sum-small{color:var(--steel);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sumbar .btn.primary{min-height:68px;min-width:280px}
+
+/* ---------- Done ---------- */
+.done{height:100%;display:flex;align-items:center;justify-content:center;padding:24px}
+.done-card{background:var(--board);border:2px solid var(--line);border-radius:16px;padding:40px 44px;max-width:620px;width:100%}
+.check{width:76px;height:76px;border-radius:12px;background:var(--ok);color:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:22px}
+.done-card h1{font-size:46px;margin-bottom:8px}
+.done-card ul{list-style:none;padding:0;margin:18px 0;border-top:2px solid var(--line)}
+.done-card li{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:19px}
+.done-card li b{font-family:var(--cond);font-size:24px}
+.sync{font-size:15px;color:var(--steel);margin-bottom:22px}
+.sync.ok{color:var(--ok)} .sync.err{color:var(--warn);font-weight:600}
+.done-actions{display:flex;gap:12px;flex-wrap:wrap}
+
+/* ---------- Modal ---------- */
+#modal:empty{display:none}
+.scrim{position:fixed;inset:0;background:rgba(27,34,36,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.dialog{background:var(--board);border-radius:14px;padding:28px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.dialog h3{font-size:30px;margin-bottom:6px}
+.dialog p{color:var(--steel);margin:0 0 16px}
+.dialog .search{width:100%;margin-bottom:16px}
+.dialog .qtyval{font-family:var(--cond);font-size:64px;font-weight:700;text-align:center;height:76px;margin-bottom:10px}
+.dialog .keypad{justify-content:center;margin:0 auto 18px;grid-template-columns:repeat(3,1fr)}
+.dialog .key{height:70px}
+.dialog-actions{display:flex;gap:10px;justify-content:flex-end}
+
+/* ---------- Toast ---------- */
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--board);padding:14px 22px;border-radius:10px;font-weight:600;z-index:60;max-width:90vw;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+#toast.err{background:var(--warn)}
+
+/* ---------- Admin ---------- */
+.admin{display:flex;flex-direction:column;height:100%}
+.a-top{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:10px 20px;background:var(--ink);color:var(--board);position:sticky;top:0;z-index:5}
+.a-title{font-family:var(--cond);font-size:26px;font-weight:700;margin-right:8px}
+.tabs{display:flex;gap:4px;flex:1;flex-wrap:wrap}
+.tabs button{border:0;background:transparent;color:#AEB7BA;min-height:48px;padding:0 14px;font-weight:600;font-size:16px;border-bottom:3px solid transparent;display:inline-flex;align-items:center;gap:8px}
+.tabs button.on{color:var(--board);border-bottom-color:var(--signal)}
+.badge{background:var(--signal);color:var(--ink);border-radius:20px;min-width:24px;height:24px;padding:0 7px;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.a-right{display:flex;align-items:center;gap:12px;font-size:14px;color:#AEB7BA}
+.a-right label{display:flex;align-items:center;gap:6px}
+.a-right .btn{min-height:42px;border-color:#55636A;background:transparent;color:var(--board);font-size:15px}
+.a-main{flex:1;overflow:auto;padding:20px;-webkit-overflow-scrolling:touch}
+.grid2{display:grid;grid-template-columns:minmax(300px,400px) 1fr;gap:20px;align-items:start}
+.panel{background:var(--board);border:2px solid var(--line);border-radius:12px;padding:20px}
+.panel h2{font-size:28px;margin-bottom:14px}
+.panel h3{font-size:22px;margin:18px 0 10px}
+.panel h3:first-child{margin-top:0}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;font-size:14px;font-weight:600;color:var(--steel)}
+.field input,.field select,.inp{width:100%;height:50px;border-radius:9px;border:2px solid var(--line);background:var(--white);padding:0 12px;font:inherit;font-size:17px;color:var(--ink);min-width:0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row>*{min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.chip{border:2px solid var(--line);background:var(--white);border-radius:30px;min-height:42px;padding:0 14px;font-weight:600;font-size:15px}
+.chip.on{background:var(--ink);color:var(--board);border-color:var(--ink)}
+.check-row{display:flex;align-items:center;gap:10px;font-weight:600;margin:4px 0 14px;font-size:16px}
+.check-row input{width:24px;height:24px}
+.group-h{display:flex;align-items:baseline;gap:10px;margin:18px 0 8px}
+.group-h:first-child{margin-top:0}
+.group-h h3{font-size:22px;margin:0}
+.group-h span{color:var(--steel);font-size:15px}
+.item{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;background:var(--white);border:2px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.item.urgent{border-color:var(--warn);border-left-width:8px}
+.item-t{font-weight:700;font-size:18px}
+.item-t .q{font-family:var(--cond);font-size:22px;margin-right:6px}
+.item-s{color:var(--steel);font-size:14px;margin-top:2px}
+.item-a{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.tag{display:inline-block;font-size:13px;font-weight:700;padding:2px 8px;border-radius:5px;background:#FBE3D6;color:var(--warn);margin-left:6px;vertical-align:2px}
+.tscroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px;background:var(--white)}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;color:var(--steel);font-weight:700;background:var(--board);position:sticky;top:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tfoot td{font-weight:700;background:var(--board)}
+.pchip{display:inline-flex;align-items:center;gap:5px;margin:0 6px 4px 0;white-space:nowrap}
+.pchip i{width:12px;height:12px;border-radius:2px;display:inline-block;border:1px solid rgba(0,0,0,.25)}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.filters .inp{height:46px;width:auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:8px}
+.kpi{background:var(--white);border:2px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi .edge{height:16px}
+.kpi-b{padding:10px 14px}
+.kpi-n{font-size:15px;font-weight:700}
+.kpi-v{font-family:var(--cond);font-size:34px;font-weight:700;line-height:1.05}
+.kpi-v.neg{color:var(--warn)}
+.kpi-s{font-size:13px;color:var(--steel)}
+.hint{color:var(--steel);font-size:14px;margin:6px 0 0}
+.cfg-row{display:grid;grid-template-columns:1.3fr 1fr 90px 54px 70px 44px;gap:8px;align-items:center;margin-bottom:8px}
+.cfg-row.mat{grid-template-columns:1.6fr 1fr 44px}
+.cfg-row .inp{height:46px;font-size:16px;width:100%}
+.cfg-row input[type=color]{height:46px;width:54px;padding:2px;border:2px solid var(--line);border-radius:9px;background:var(--white)}
+.cfg-h{font-size:13px;font-weight:700;color:var(--steel)}
+.x{width:44px;height:44px;border-radius:9px;border:2px solid var(--line);background:var(--white);font-size:20px;color:var(--steel)}
+
+@media (max-width:900px){
+  .home{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .home-left{padding:28px 28px 0}
+  .home-left p{display:none}
+  .stack{margin-top:22px}
+  .keypad{grid-template-columns:repeat(3,110px)}
+  .stack .sheet:nth-child(n+5){display:none}
+  .home-right{border-left:0;border-top:2px solid var(--line)}
+  .grid2{grid-template-columns:1fr}
+  .obj{grid-template-columns:96px 1fr}
+  .obj-meta{display:none}
+  .sumbar{flex-wrap:wrap}
+  .sumbar .btn.primary{width:100%;min-width:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal"></div>
+<div id="toast"></div>
+<script>
+// ============================================================
+// WERKSTATT-TABLET — Gipsplatten-Entnahme, Lieferungen, Bestellungen
+// Nutzt dasselbe Firebase-Projekt wie PE-KALENDER (pe-kalender-alle-gruppen)
+// Gruppen + Codes kommen live aus teams_config, Objekte aus teams_cal_<gruppe>
+// ============================================================
+const GATE = { pin: "3161", email: "zugang@pe-intern.local", password: "PE-Zugang-3161x" };
+const ADMIN_PIN = "8852";
+const firebaseConfig = {
+  apiKey: "AIzaSyDStnUEu9A7reQUXBhVz5CrXxkmY4n2nOk",
+  authDomain: "pe-kalender-alle-gruppen.firebaseapp.com",
+  projectId: "pe-kalender-alle-gruppen",
+  storageBucket: "pe-kalender-alle-gruppen.firebasestorage.app",
+  messagingSenderId: "993655186874",
+  appId: "1:993655186874:web:068a06ce160cd611e1e983"
+};
+const COL = {
+  ent:  "werkstatt_entnahmen",
+  lief: "werkstatt_lieferungen",
+  best: "werkstatt_bestellungen",
+  cfg:  "werkstatt_config"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+// Offline-Puffer: Einträge werden bei schlechtem WLAN lokal gehalten und später gesendet
+db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+
+const DEFAULT_PLATTEN = [
+  { id:"gkb125",     name:"Gipsplatte",  dicke:"12.5 mm", m2:2.5,  color:"#E6E4DD", active:true },
+  { id:"gkb18",      name:"Gipsplatte",  dicke:"18 mm",   m2:2.5,  color:"#D3D1C9", active:true },
+  { id:"aqua125",    name:"Aquapanel",   dicke:"12.5 mm", m2:1.08, color:"#9DA3A0", active:true },
+  { id:"aqua18",     name:"Aquapanel",   dicke:"18 mm",   m2:1.08, color:"#7E8682", active:true },
+  { id:"diamant125", name:"Diamant",     dicke:"12.5 mm", m2:2.5,  color:"#A9C8E6", active:true },
+  { id:"gkf125",     name:"Feuerschutz", dicke:"12.5 mm", m2:2.5,  color:"#E7B1AE", active:true },
+  { id:"gkbi125",    name:"Feuchtraum",  dicke:"12.5 mm", m2:2.5,  color:"#AFD3B2", active:true }
+];
+const DEFAULT_MATERIAL = [
+  { name:"Spachtelmasse", unit:"Sack" },
+  { name:"Gipsplatten", unit:"Platten" },
+  { name:"Schrauben 35 mm", unit:"Paket" },
+  { name:"Schrauben 45 mm", unit:"Paket" },
+  { name:"Schallschutzband", unit:"Rolle" },
+  { name:"Netz", unit:"Rolle" },
+  { name:"Fugendeckstreifen", unit:"Rolle" },
+  { name:"Kantenschutz", unit:"Stk" }
+];
+const UNITS = ["Stk","Sack","Eimer","Paket","Karton","Rolle","Platten","m²","lfm"];
+
+// ---------- State ----------
+const S = {
+  view: "boot", authed: false, online: navigator.onLine,
+  teams: [], teamsLoaded: false, dbError: "",
+  cfg: { platten: DEFAULT_PLATTEN, material: DEFAULT_MATERIAL },
+  pin: "", pinMsg: "", pinBusy: false,
+  team: null, objects: [], objLoading: false, objSearch: "", objAll: false, objType: "alle",
+  object: null, qty: {},
+  last: null, saveState: "pending",
+  admin: false, adminTab: "bestellungen", stay: false,
+  bestellungen: [], entnahmen: [], lieferungen: [],
+  fEnt: { team:"", days:"30", q:"" }, fObj: "",
+  editCfg: null
+};
+try { S.stay = localStorage.getItem("werkstatt_stay") === "1"; } catch(e) {}
+
+// ---------- Helpers ----------
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const pad2 = n => String(n).padStart(2, "0");
+const dStr = d => d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+const todayStr = () => dStr(new Date());
+const parseD = s => { if (!s || typeof s !== "string") return null; const [y, m, d] = s.split("-").map(Number); return y ? new Date(y, m - 1, d) : null; };
+const dayDiff = (a, b) => Math.round((a - b) / 86400000);
+const fmtDay = s => { const d = parseD(s); return d ? d.toLocaleDateString("de-CH", { weekday:"short", day:"2-digit", month:"2-digit" }) : "ohne Datum"; };
+const fmtDT = iso => { const d = new Date(iso); if (isNaN(d)) return "–"; return d.toLocaleDateString("de-CH", { day:"2-digit", month:"2-digit", year:"2-digit" }) + ", " + d.toLocaleTimeString("de-CH", { hour:"2-digit", minute:"2-digit" }); };
+const r1 = n => Math.round((Number(n) || 0) * 10) / 10;
+const fmtM2 = n => r1(n).toLocaleString("de-CH", { minimumFractionDigits:1, maximumFractionDigits:1 });
+const num = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
+const parseTypes = ct => {
+  if (!ct || ct === "montage") return ["montage"];
+  if (ct === "both" || ct === "all") return ["montage","beplankung","ausflocken"];
+  if (["beplankung","ausflocken"].includes(ct)) return [ct];
+  try { const a = JSON.parse(ct); if (Array.isArray(a)) return a; } catch(e) {}
+  return ["montage"];
+};
+const TYPE_LABEL = { montage:"Montage", beplankung:"Beplankung", ausflocken:"Ausflocken" };
+const plattenAll = () => (S.cfg.platten && S.cfg.platten.length ? S.cfg.platten : DEFAULT_PLATTEN);
+const plattenActive = () => plattenAll().filter(p => p.active !== false);
+const plateById = id => plattenAll().find(p => p.id === id);
+const plateLabel = p => p ? (p.name + " " + p.dicke) : "Unbekannt";
+const objKeyOf = (teamId, e) => e.auftragsNr && String(e.auftragsNr).trim() ? "A:" + String(e.auftragsNr).trim() : "E:" + teamId + "/" + e.id;
+const lsGet = k => { try { return localStorage.getItem(k) || ""; } catch(e) { return ""; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch(e) {} };
+
+let toastTimer;
+function toast(msg, err) {
+  const t = $("#toast"); t.textContent = msg; t.className = "show" + (err ? " err" : "");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = "", err ? 6000 : 2600);
+}
+function fsError(err, what) {
+  console.error(what, err);
+  const msg = err && err.code === "permission-denied"
+    ? "Keine Berechtigung für " + what + ". Firestore-Regeln für die Werkstatt-Sammlungen ergänzen."
+    : "Fehler bei " + what + ": " + (err && err.message || err);
+  S.dbError = msg; toast(msg, true);
+  if (S.view === "home") render();
+}
+
+// ---------- Firebase listeners ----------
+let baseUnsubs = [], adminUnsubs = [];
+function startBase() {
+  stopBase();
+  baseUnsubs.push(db.collection("teams_config").onSnapshot(snap => {
+    S.teams = snap.docs.map(d => ({ ...d.data(), id: d.data().id || d.id })).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    S.teamsLoaded = true;
+  }, err => fsError(err, "Gruppen")));
+  baseUnsubs.push(db.collection(COL.cfg).doc("settings").onSnapshot(doc => {
+    const d = doc.exists ? doc.data() : {};
+    S.cfg = { platten: d.platten && d.platten.length ? d.platten : DEFAULT_PLATTEN, material: d.material && d.material.length ? d.material : DEFAULT_MATERIAL };
+    if (S.view === "plates") render();
+    if (S.view === "admin" && S.adminTab !== "einstellungen") renderAdminBody();
+  }, err => fsError(err, "Einstellungen")));
+}
+function stopBase() { baseUnsubs.forEach(u => u()); baseUnsubs = []; }
+
+let knownOpen = null;
+function startAdmin() {
+  stopAdmin();
+  adminUnsubs.push(db.collection(COL.best).orderBy("createdAt", "desc").limit(400).onSnapshot(snap => {
+    S.bestellungen = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    const openIds = S.bestellungen.filter(b => b.status === "offen").map(b => b.id);
+    if (knownOpen && openIds.some(id => !knownOpen.has(id))) beep();
+    knownOpen = new Set(openIds);
+    document.title = openIds.length ? "(" + openIds.length + ") Werkstatt" : "Werkstatt";
+    adminRefresh();
+  }, err => fsError(err, "Bestellungen")));
+  adminUnsubs.push(db.collection(COL.ent).orderBy("createdAt", "desc").onSnapshot(snap => {
+    S.entnahmen = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    adminRefresh();
+  }, err => fsError(err, "Entnahmen")));
+  adminUnsubs.push(db.collection(COL.lief).orderBy("createdAt", "desc").onSnapshot(snap => {
+    S.lieferungen = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    adminRefresh();
+  }, err => fsError(err, "Lieferungen")));
+}
+function stopAdmin() { adminUnsubs.forEach(u => u()); adminUnsubs = []; knownOpen = null; document.title = "Werkstatt"; }
+
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = 880; g.gain.value = 0.15; o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + 0.18);
+  } catch(e) {}
+}
+
+auth.onAuthStateChanged(u => {
+  if (u) { S.authed = true; startBase(); if (S.view === "boot" || S.view === "gate") go("home"); }
+  else { S.authed = false; stopBase(); stopAdmin(); S.admin = false; go("gate"); }
+});
+window.addEventListener("online",  () => { S.online = true;  if (S.view === "home") render(); });
+window.addEventListener("offline", () => { S.online = false; if (S.view === "home") render(); });
+
+// ---------- Routing ----------
+function go(view) { S.view = view; render(); window.scrollTo(0, 0); }
+function render() {
+  const app = $("#app");
+  switch (S.view) {
+    case "boot":    app.innerHTML = `<div class="done"><div class="pad-label">Verbinde …</div></div>`; break;
+    case "gate":    app.innerHTML = viewGate(); break;
+    case "home":    app.innerHTML = viewHome(); break;
+    case "objects": app.innerHTML = viewObjects(); refreshObjList(); break;
+    case "plates":  app.innerHTML = viewPlates(); break;
+    case "done":    app.innerHTML = viewDone(); break;
+    case "admin":   app.innerHTML = viewAdminShell(); renderAdminBody(); break;
+  }
+}
+function resetToHome() {
+  S.team = null; S.object = null; S.qty = {}; S.pin = ""; S.pinMsg = ""; S.objSearch = ""; S.objAll = false;
+  closeModal(); clearTimeout(doneTimer); go("home");
+}
+
+// ---------- Keypad (Gate + Home) ----------
+function keypadHTML(act = "key") {
+  const keys = [1,2,3,4,5,6,7,8,9,"C",0,"⌫"];
+  return `<div class="keypad">${keys.map(k => `<button class="key${typeof k === "string" ? " fn" : ""}" data-act="${act}" data-k="${k}" aria-label="${k === "⌫" ? "Löschen" : k === "C" ? "Leeren" : k}">${k === "C" ? "Leeren" : k}</button>`).join("")}</div>`;
+}
+function dotsHTML() { return `<div class="dots" aria-hidden="true">${[0,1,2,3].map(i => `<span class="${S.pin.length > i ? "on" : ""}"></span>`).join("")}</div>`; }
+
+function viewGate() {
+  return `<div class="home"><div class="home-left">
+      <div class="home-date">Werkstatt-Tablet</div>
+      <h1>Tablet einrichten</h1>
+      <p>Einmalig den Zugangscode eingeben. Danach bleibt das Tablet verbunden.</p>
+      ${stackHTML()}
+    </div>
+    <div class="home-right">
+      <div class="pad-label">Zugangscode</div>
+      ${dotsHTML()}<div class="pin-msg ${S.pinBusy ? "info" : ""}">${esc(S.pinBusy ? "Verbinde …" : S.pinMsg)}</div>
+      ${keypadHTML()}
+    </div></div>`;
+}
+function stackHTML() {
+  const pl = plattenAll();
+  const widths = [74, 82, 78, 86, 80, 88, 84, 90, 87, 92];
+  const offs = [3, 0, 5, 1, 4, 0, 2, 1, 3, 0];
+  let out = `<div class="stack" aria-hidden="true">`;
+  for (let i = 0; i < 10; i++) {
+    const p = pl[(i * 3) % pl.length];
+    out += `<div class="sheet" style="--pc:${esc(p.color)};width:min(${widths[i]}%,${Math.round(widths[i] * 5.6)}px);margin-left:${offs[i] * 4}px"></div>`;
+  }
+  return out + `<div class="pallet"></div></div>`;
+}
+function viewHome() {
+  const now = new Date();
+  const date = now.toLocaleDateString("de-CH", { weekday:"long", day:"numeric", month:"long" });
+  return `<div class="home"><div class="home-left">
+      <div class="home-date">${esc(date)}</div>
+      <h1>Material mitnehmen</h1>
+      <p>Gruppen-Code eingeben, Objekt wählen und die Platten eintragen, die du mitnimmst.</p>
+      ${stackHTML()}
+    </div>
+    <div class="home-right">
+      <div class="pad-label">Gruppen-Code</div>
+      ${dotsHTML()}<div class="pin-msg">${esc(S.pinMsg)}</div>
+      ${keypadHTML()}
+      <div class="net ${S.online ? "" : "off"}"><i></i>${S.online ? "Verbunden" : "Kein Netz: Einträge werden später übertragen"}</div>
+      ${S.dbError ? `<div class="banner">${esc(S.dbError)}</div>` : ""}
+    </div></div>`;
+}
+function updatePinUI() {
+  const d = $(".dots"); if (d) d.outerHTML = dotsHTML();
+  const m = $(".pin-msg"); if (m) { m.textContent = S.pinBusy ? "Verbinde …" : S.pinMsg; m.className = "pin-msg" + (S.pinBusy ? " info" : ""); }
+}
+function pressKey(k) {
+  if (S.pinBusy) return;
+  if (k === "C") { S.pin = ""; S.pinMsg = ""; return updatePinUI(); }
+  if (k === "⌫") { S.pin = S.pin.slice(0, -1); S.pinMsg = ""; return updatePinUI(); }
+  if (S.pin.length >= 4) return;
+  S.pin += String(k); S.pinMsg = ""; updatePinUI();
+  if (S.pin.length === 4) setTimeout(submitPin, 120);
+}
+function pinFail(msg) {
+  S.pinMsg = msg; S.pin = ""; updatePinUI();
+  if (navigator.vibrate) navigator.vibrate(120);
+}
+function submitPin() {
+  const pin = S.pin;
+  if (S.view === "gate") {
+    if (pin !== GATE.pin) return pinFail("Falscher Code");
+    S.pinBusy = true; updatePinUI();
+    auth.signInWithEmailAndPassword(GATE.email, GATE.password)
+      .then(() => { S.pinBusy = false; S.pin = ""; })
+      .catch(err => { S.pinBusy = false; pinFail("Anmeldung fehlgeschlagen"); console.error(err); });
+    return;
+  }
+  if (pin === ADMIN_PIN) { S.pin = ""; S.admin = true; startAdmin(); go("admin"); return; }
+  if (!S.teamsLoaded) return pinFail("Gruppen werden noch geladen");
+  const team = S.teams.find(t => String(t.pin) === pin);
+  if (!team) return pinFail("Code unbekannt");
+  S.pin = ""; S.team = team;
+  const types = parseTypes(team.calType);
+  S.objType = types.includes("beplankung") ? "beplankung" : "alle";
+  loadObjects(team); go("objects");
+}
+
+// ---------- Objekte ----------
+function loadObjects(team) {
+  S.objLoading = true; S.objects = [];
+  db.collection("teams_cal_" + team.id).get().then(snap => {
+    S.objects = snap.docs.map(d => ({ ...d.data(), id: d.id })).filter(e => (e.customer || "").trim());
+    S.objLoading = false; if (S.view === "objects") refreshObjList();
+  }).catch(err => { S.objLoading = false; fsError(err, "Objekte"); if (S.view === "objects") refreshObjList(); });
+}
+function objScore(e, today) {
+  const s = parseD(e.deliveryDate), en = parseD(e.endDate) || s;
+  if (!s) return 9999;
+  if (s <= today && en >= today) return 0;
+  return s > today ? dayDiff(s, today) : dayDiff(today, en) + 0.5;
+}
+function filteredObjects() {
+  const today = parseD(todayStr());
+  const q = S.objSearch.trim().toLowerCase();
+  return S.objects.filter(e => {
+    if (S.objType !== "alle" && (e.calType || "montage") !== S.objType) return false;
+    if (!S.objAll) {
+      if (e.isDone) return false;
+      const s = parseD(e.deliveryDate), en = parseD(e.endDate) || s;
+      if (!s) return false;
+      if (dayDiff(today, en) > 30 || dayDiff(s, today) > 21) return false;
+    }
+    if (q) {
+      const hay = [e.customer, e.address, e.auftragsNr, e.memo].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a, b) => objScore(a, today) - objScore(b, today));
+}
+function viewObjects() {
+  const t = S.team, types = parseTypes(t.calType);
+  const segs = types.length > 1 ? ["alle", ...types] : [];
+  return `<div class="flow">
+    <div class="bar">
+      <div class="team"><i style="background:${esc(t.color || "#888")}"></i>${esc(t.name)}</div>
+      <div class="step">Schritt 1 von 2: Objekt wählen</div>
+      <button class="btn" data-act="home">Abbrechen</button>
+    </div>
+    <div class="flow-body">
+      <h2>Für welches Objekt?</h2>
+      <div class="tools">
+        <input class="search" id="objSearch" data-input="objSearch" placeholder="Kunde, Adresse oder Auftrags-Nr." value="${esc(S.objSearch)}" autocomplete="off">
+        ${segs.length ? `<div class="seg">${segs.map(s => `<button class="${S.objType === s ? "on" : ""}" data-act="objType" data-v="${s}">${s === "alle" ? "Alle" : TYPE_LABEL[s] || s}</button>`).join("")}</div>` : ""}
+        <div class="seg"><button class="${!S.objAll ? "on" : ""}" data-act="objAll" data-v="0">Aktuell</button><button class="${S.objAll ? "on" : ""}" data-act="objAll" data-v="1">Alle</button></div>
+      </div>
+      <div class="objlist" id="objList"></div>
+      <button class="freebtn" data-act="freeObj">Objekt fehlt in der Liste? Selbst eintragen</button>
+    </div></div>`;
+}
+function refreshObjList() {
+  const el = $("#objList"); if (!el) return;
+  if (S.objLoading) { el.innerHTML = `<div class="empty">Objekte werden geladen …</div>`; return; }
+  const list = filteredObjects();
+  if (!list.length) {
+    el.innerHTML = `<div class="empty">${S.objSearch ? "Kein Objekt passt zur Suche." : S.objAll ? "Diese Gruppe hat keine Objekte im Kalender." : "Keine aktuellen Objekte. Tippe auf «Alle», um ältere oder spätere zu sehen."}</div>`;
+    return;
+  }
+  const today = parseD(todayStr());
+  el.innerHTML = list.slice(0, 120).map(e => {
+    const s = parseD(e.deliveryDate), en = parseD(e.endDate) || s;
+    const running = s && s <= today && en >= today;
+    let sub = "";
+    if (running) sub = "läuft";
+    else if (s) { const dd = dayDiff(s, today); sub = dd === 1 ? "morgen" : dd === -1 ? "gestern" : dd > 0 ? "in " + dd + " Tagen" : "vor " + (-dd) + " Tagen"; }
+    return `<button class="obj" data-act="pickObj" data-id="${esc(e.id)}">
+      <div class="obj-date ${running ? "now" : ""}">${esc(fmtDay(e.deliveryDate))}<small>${esc(sub)}${e.isDone ? ", erledigt" : ""}</small></div>
+      <div><div class="obj-name">${esc(e.customer)}</div><div class="obj-sub">${esc(e.address || e.memo || "")}</div></div>
+      <div class="obj-meta">${e.auftragsNr ? `<b>${esc(e.auftragsNr)}</b>` : ""}${esc(TYPE_LABEL[e.calType || "montage"] || "")}</div>
+    </button>`;
+  }).join("");
+}
+function pickObject(id) {
+  const e = S.objects.find(x => x.id === id); if (!e) return;
+  S.object = {
+    key: objKeyOf(S.team.id, e), label: e.customer || "", address: e.address || "",
+    auftragsNr: e.auftragsNr || "", calEntryId: e.id, calType: e.calType || "montage", deliveryDate: e.deliveryDate || ""
+  };
+  S.qty = {}; go("plates");
+}
+
+// ---------- Platten ----------
+function inkFor(hex) {
+  const h = String(hex || "").replace("#", ""); if (h.length !== 6) return "#1B2224";
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  return (0.299*r + 0.587*g + 0.114*b) > 150 ? "#1B2224" : "#FFFFFF";
+}
+function totals() {
+  let n = 0, m2 = 0; const parts = [];
+  plattenActive().forEach(p => { const q = S.qty[p.id] || 0; if (q > 0) { n += q; m2 += q * num(p.m2); parts.push(q + "× " + plateLabel(p)); } });
+  return { n, m2, parts };
+}
+function viewPlates() {
+  const t = S.team, o = S.object, tot = totals();
+  return `<div class="flow">
+    <div class="bar">
+      <div class="team"><i style="background:${esc(t.color || "#888")}"></i>${esc(t.name)}</div>
+      <div class="step">Schritt 2 von 2: ${esc(o.label)}${o.auftragsNr ? ", " + esc(o.auftragsNr) : ""}</div>
+      <button class="btn" data-act="backObj">Objekt ändern</button>
+      <button class="btn" data-act="home">Abbrechen</button>
+    </div>
+    <div class="flow-body">
+      <h2>Welche Platten nimmst du mit?</h2>
+      <div class="plates">${plattenActive().map(plateTile).join("")}</div>
+    </div>
+    <div class="sumbar">
+      <div class="sum"><div class="sum-big">${tot.n} Platten, ${fmtM2(tot.m2)} m²</div><div class="sum-small">${esc(tot.parts.join(", ") || "Noch nichts eingetragen")}</div></div>
+      <button class="btn primary" data-act="save" ${tot.n ? "" : "disabled"}>Entnahme speichern</button>
+    </div></div>`;
+}
+function plateTile(p) {
+  const q = S.qty[p.id] || 0;
+  return `<div class="plate ${q ? "has" : ""}" style="--pc:${esc(p.color)}">
+    <button class="plate-hit" data-act="inc" data-id="${esc(p.id)}" data-n="1" aria-label="${esc(plateLabel(p))} plus 1">
+      <span class="edge"></span>
+      <span class="plate-info"><span><span class="plate-name">${esc(p.name)}</span><span class="plate-thk">${esc(p.dicke)}</span><span class="plate-m2">${num(p.m2).toLocaleString("de-CH",{maximumFractionDigits:2})} m² pro Platte</span></span>
+      <span class="plate-count">${q}</span></span>
+    </button>
+    <div class="plate-ctl">
+      <button data-act="inc" data-id="${esc(p.id)}" data-n="-1" aria-label="minus 1">−</button>
+      <button data-act="qtyPad" data-id="${esc(p.id)}" aria-label="Anzahl eintippen">123</button>
+      <button data-act="inc" data-id="${esc(p.id)}" data-n="5">+5</button>
+      <button class="plus" data-act="inc" data-id="${esc(p.id)}" data-n="1" aria-label="plus 1">+</button>
+    </div></div>`;
+}
+function changeQty(id, n) {
+  S.qty[id] = Math.max(0, Math.min(999, (S.qty[id] || 0) + n));
+  const sy = $(".flow-body").scrollTop; render(); $(".flow-body").scrollTop = sy;
+}
+
+let doneTimer, doneLeft = 0;
+function saveEntnahme() {
+  const tot = totals(); if (!tot.n) return;
+  const items = plattenActive().filter(p => (S.qty[p.id] || 0) > 0).map(p => ({
+    id: p.id, name: p.name, dicke: p.dicke, color: p.color, anzahl: S.qty[p.id], m2ProPlatte: num(p.m2), m2: Math.round(S.qty[p.id] * num(p.m2) * 100) / 100
+  }));
+  const id = "ent-" + uid();
+  const rec = {
+    id, createdAt: new Date().toISOString(), datum: todayStr(),
+    teamId: S.team.id, teamName: S.team.name || "", teamColor: S.team.color || "",
+    objKey: S.object.key, objLabel: S.object.label, objAddress: S.object.address || "",
+    auftragsNr: S.object.auftragsNr || "", calEntryId: S.object.calEntryId || "", calType: S.object.calType || "",
+    frei: !!S.object.free, items, totalPlatten: tot.n, totalM2: Math.round(tot.m2 * 100) / 100, quelle: "tablet-werkstatt"
+  };
+  S.last = rec; S.saveState = S.online ? "pending" : "offline";
+  db.collection(COL.ent).doc(id).set(rec)
+    .then(() => { if (S.last && S.last.id === id) { S.saveState = "ok"; updateSync(); } })
+    .catch(err => { if (S.last && S.last.id === id) { S.saveState = "error"; updateSync(); } fsError(err, "Entnahme speichern"); });
+  doneLeft = 12; go("done");
+  clearInterval(doneTimer);
+  doneTimer = setInterval(() => {
+    doneLeft--; const c = $("#cd"); if (c) c.textContent = doneLeft;
+    if (doneLeft <= 0) { clearInterval(doneTimer); if (S.view === "done" && S.saveState !== "error") resetToHome(); }
+  }, 1000);
+}
+function syncText() {
+  return { pending: "Wird übertragen …", offline: "Kein Netz: wird übertragen, sobald das Tablet wieder online ist.", ok: "Übertragen ins Büro.", error: "Nicht gespeichert. Bitte dem Büro melden." }[S.saveState];
+}
+function updateSync() { const el = $("#sync"); if (el) { el.textContent = syncText(); el.className = "sync " + (S.saveState === "ok" ? "ok" : S.saveState === "error" ? "err" : ""); } }
+function viewDone() {
+  const r = S.last;
+  return `<div class="done"><div class="done-card">
+    <div class="check"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg></div>
+    <h1>Entnahme gespeichert</h1>
+    <div>${esc(r.teamName)} für ${esc(r.objLabel)}</div>
+    <ul>${r.items.map(i => `<li><span>${esc(i.name)} ${esc(i.dicke)}</span><b>${i.anzahl} Stk</b></li>`).join("")}
+      <li><span>Total</span><b>${r.totalPlatten} Platten, ${fmtM2(r.totalM2)} m²</b></li></ul>
+    <div id="sync" class="sync ${S.saveState === "ok" ? "ok" : S.saveState === "error" ? "err" : ""}">${esc(syncText())}</div>
+    <div class="done-actions">
+      <button class="btn primary" data-act="home">Fertig</button>
+      <button class="btn ghost" data-act="undo">Rückgängig machen</button>
+    </div>
+    <p class="hint">Zurück zum Start in <span id="cd">${doneLeft}</span> s</p>
+  </div></div>`;
+}
+function undoEntnahme() {
+  if (!S.last) return;
+  clearInterval(doneTimer);
+  const id = S.last.id;
+  db.collection(COL.ent).doc(id).delete().catch(err => fsError(err, "Rückgängig"));
+  // Platten-Auswahl bleibt erhalten, damit man korrigieren kann
+  S.last = null; toast("Entnahme gelöscht. Bitte korrigieren."); go("plates");
+}
+
+// ---------- Modal ----------
+function openModal(m) { S.modal = m; renderModal(); }
+function closeModal() { S.modal = null; renderModal(); }
+function renderModal() {
+  const root = $("#modal"), m = S.modal;
+  if (!m) { root.innerHTML = ""; return; }
+  if (m.type === "free") {
+    root.innerHTML = `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true">
+      <h3>Objekt eintragen</h3><p>Kunde oder Adresse, z.B. «Lager» oder «Müller, Lachen».</p>
+      <input class="search" id="freeInp" autocomplete="off">
+      <div class="dialog-actions"><button class="btn ghost" data-act="modalClose">Abbrechen</button><button class="btn dark" data-act="freeOk">Weiter</button></div>
+    </div></div>`;
+    setTimeout(() => $("#freeInp") && $("#freeInp").focus(), 50);
+  } else if (m.type === "qty") {
+    const p = plateById(m.id);
+    root.innerHTML = `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true">
+      <h3>${esc(plateLabel(p))}</h3><p>Anzahl Platten eintippen</p>
+      <div class="qtyval" id="qtyVal">${esc(m.val || "0")}</div>
+      ${keypadHTML("qkey")}
+      <div class="dialog-actions"><button class="btn ghost" data-act="modalClose">Abbrechen</button><button class="btn dark" data-act="qtyOk">Übernehmen</button></div>
+    </div></div>`;
+  } else if (m.type === "confirm") {
+    root.innerHTML = `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true">
+      <h3>${esc(m.title)}</h3><p>${esc(m.text || "")}</p>
+      <div class="dialog-actions"><button class="btn ghost" data-act="modalClose">Abbrechen</button><button class="btn dark" data-act="confirmOk">${esc(m.ok || "OK")}</button></div>
+    </div></div>`;
+  }
+}
+function confirmDlg(title, text, ok, fn) { openModal({ type: "confirm", title, text, ok, fn }); }
+
+// ============================================================
+// ADMIN (Büro / Disponent)
+// ============================================================
+function viewAdminShell() {
+  return `<div class="admin">
+    <header class="a-top">
+      <div class="a-title">Werkstatt-Verwaltung</div>
+      <nav class="tabs" id="tabs">${tabsHTML()}</nav>
+      <div class="a-right">
+        <label><input type="checkbox" data-change="stay" ${S.stay ? "checked" : ""}> Angemeldet bleiben</label>
+        <button class="btn" data-act="logoutAdmin">Abmelden</button>
+      </div>
+    </header>
+    <main class="a-main" id="aMain"></main></div>`;
+}
+function tabsHTML() {
+  const open = S.bestellungen.filter(b => b.status === "offen").length;
+  const tabs = [["bestellungen", "Bestellungen", open], ["entnahmen", "Entnahmen"], ["lieferungen", "Lieferungen Lager"], ["uebersicht", "Lager & Objekte"], ["einstellungen", "Einstellungen"]];
+  return tabs.map(([k, l, b]) => `<button class="${S.adminTab === k ? "on" : ""}" data-act="tab" data-v="${k}">${l}${b ? ` <span class="badge">${b}</span>` : ""}</button>`).join("");
+}
+function renderAdminBody() {
+  const m = $("#aMain"); if (!m) return;
+  const tabs = $("#tabs"); if (tabs) tabs.innerHTML = tabsHTML();
+  if (S.adminTab === "bestellungen") m.innerHTML = tabBestellungen();
+  else if (S.adminTab === "entnahmen") m.innerHTML = tabEntnahmen();
+  else if (S.adminTab === "lieferungen") m.innerHTML = tabLieferungen();
+  else if (S.adminTab === "uebersicht") m.innerHTML = tabUebersicht();
+  else if (S.adminTab === "einstellungen") { if (!S.editCfg) S.editCfg = JSON.parse(JSON.stringify(S.cfg)); m.innerHTML = tabEinstellungen(); }
+  adminRefresh();
+}
+// aktualisiert nur Listen, Formulare bleiben unangetastet
+function adminRefresh() {
+  if (S.view !== "admin") return;
+  const tabs = $("#tabs"); if (tabs) tabs.innerHTML = tabsHTML();
+  const l = $("#aList"); if (!l) return;
+  if (S.adminTab === "bestellungen") l.innerHTML = listBestellungen();
+  else if (S.adminTab === "entnahmen") l.innerHTML = listEntnahmen();
+  else if (S.adminTab === "lieferungen") l.innerHTML = listLieferungen();
+  else if (S.adminTab === "uebersicht") l.innerHTML = listUebersicht();
+}
+function logoutAdmin() { S.admin = false; S.editCfg = null; stopAdmin(); resetToHome(); }
+
+// ---- Bestellungen ----
+function tabBestellungen() {
+  const by = lsGet("werkstatt_by");
+  return `<div class="grid2">
+    <section class="panel">
+      <h2>Material bestellen</h2>
+      <div class="chips">${S.cfg.material.map((m, i) => `<button class="chip" data-act="pickMat" data-i="${i}">${esc(m.name)}</button>`).join("")}</div>
+      <label class="field">Material<input id="bMat" autocomplete="off" placeholder="z.B. Spachtelmasse"></label>
+      <div class="row">
+        <label class="field">Menge<input id="bQty" inputmode="decimal" autocomplete="off"></label>
+        <label class="field">Einheit<select id="bUnit">${UNITS.map(u => `<option>${u}</option>`).join("")}</select></label>
+      </div>
+      <label class="field">Für Objekt oder Gruppe (optional)<input id="bObj" autocomplete="off"></label>
+      <label class="field">Notiz (optional)<input id="bNote" autocomplete="off" placeholder="Marke, Lieferant, Termin …"></label>
+      <label class="check-row"><input type="checkbox" id="bUrgent"> Dringend</label>
+      <label class="field">Erfasst von<input id="bBy" autocomplete="off" value="${esc(by)}"></label>
+      <button class="btn primary" style="width:100%" data-act="addBest">Auf Bestellliste setzen</button>
+    </section>
+    <section id="aList"></section></div>`;
+}
+function bestItem(b) {
+  const when0 = b.status === "bestellt" && b.bestelltAt ? "Bestellt " + fmtDT(b.bestelltAt) : b.status === "geliefert" && b.geliefertAt ? "Geliefert " + fmtDT(b.geliefertAt) : "";
+  const meta = [b.objekt, b.notiz, (b.erfasstVon ? b.erfasstVon + ", " : "Erfasst ") + fmtDT(b.createdAt), when0].filter(Boolean).join(". ");
+  let actions = "";
+  if (b.status === "offen") actions = `<button class="btn dark small" data-act="bStatus" data-id="${b.id}" data-v="bestellt">Bestellt</button>`;
+  else if (b.status === "bestellt") actions = `<button class="btn ghost small" data-act="bStatus" data-id="${b.id}" data-v="offen">Zurück</button><button class="btn dark small" data-act="bStatus" data-id="${b.id}" data-v="geliefert">Geliefert</button>`;
+  actions += `<button class="x" data-act="bDel" data-id="${b.id}" aria-label="Löschen">×</button>`;
+  return `<div class="item ${b.dringend && b.status === "offen" ? "urgent" : ""}">
+    <div><div class="item-t"><span class="q">${esc(b.menge)} ${esc(b.einheit)}</span>${esc(b.material)}${b.dringend && b.status !== "geliefert" ? `<span class="tag">Dringend</span>` : ""}</div>
+    <div class="item-s">${esc(meta)}</div></div>
+    <div class="item-a">${actions}</div></div>`;
+}
+function listBestellungen() {
+  const all = S.bestellungen;
+  const offen = all.filter(b => b.status === "offen").sort((a, b) => (b.dringend ? 1 : 0) - (a.dringend ? 1 : 0) || (a.createdAt < b.createdAt ? -1 : 1));
+  const bestellt = all.filter(b => b.status === "bestellt");
+  const geliefert = all.filter(b => b.status === "geliefert").slice(0, 15);
+  const grp = (title, arr, emptyTxt) => `<div class="group-h"><h3>${title}</h3><span>${arr.length}</span></div>${arr.length ? arr.map(bestItem).join("") : `<div class="empty">${emptyTxt}</div>`}`;
+  return `<div class="panel">${grp("Zu bestellen", offen, "Nichts offen.")}${grp("Bestellt, Lieferung ausstehend", bestellt, "Keine laufenden Bestellungen.")}${geliefert.length ? grp("Zuletzt geliefert", geliefert, "") : ""}</div>`;
+}
+function addBestellung() {
+  const mat = $("#bMat").value.trim(), qty = $("#bQty").value.trim();
+  if (!mat) { toast("Material eintragen", true); $("#bMat").focus(); return; }
+  if (!qty) { toast("Menge eintragen", true); $("#bQty").focus(); return; }
+  const by = $("#bBy").value.trim(); lsSet("werkstatt_by", by);
+  const id = "best-" + uid();
+  const rec = { id, createdAt: new Date().toISOString(), status: "offen", material: mat, menge: qty, einheit: $("#bUnit").value,
+    objekt: $("#bObj").value.trim(), notiz: $("#bNote").value.trim(), dringend: $("#bUrgent").checked, erfasstVon: by };
+  db.collection(COL.best).doc(id).set(rec).catch(err => fsError(err, "Bestellung"));
+  ["#bMat", "#bQty", "#bObj", "#bNote"].forEach(s => $(s).value = ""); $("#bUrgent").checked = false;
+  document.querySelectorAll(".chip.on").forEach(c => c.classList.remove("on"));
+  toast("Auf der Bestellliste: " + rec.menge + " " + rec.einheit + " " + rec.material);
+}
+function setBestStatus(id, st) {
+  const upd = { status: st };
+  if (st === "bestellt") upd.bestelltAt = new Date().toISOString();
+  if (st === "geliefert") upd.geliefertAt = new Date().toISOString();
+  db.collection(COL.best).doc(id).update(upd).catch(err => fsError(err, "Status"));
+}
+
+// ---- Entnahmen ----
+function tabEntnahmen() {
+  const f = S.fEnt;
+  return `<div class="filters">
+      <select class="inp" data-change="fTeam"><option value="">Alle Gruppen</option>${S.teams.map(t => `<option value="${esc(t.id)}" ${f.team === t.id ? "selected" : ""}>${esc(t.name)}</option>`).join("")}</select>
+      <select class="inp" data-change="fDays">${[["7","Letzte 7 Tage"],["30","Letzte 30 Tage"],["90","Letzte 90 Tage"],["all","Alles"]].map(([v,l]) => `<option value="${v}" ${f.days === v ? "selected" : ""}>${l}</option>`).join("")}</select>
+      <input class="inp" style="flex:1;min-width:200px" data-input="fQ" placeholder="Objekt oder Auftrags-Nr. suchen" value="${esc(f.q)}">
+      <button class="btn small" data-act="csv">Als CSV exportieren</button>
+    </div><div id="aList"></div>`;
+}
+function entFiltered() {
+  const f = S.fEnt, q = f.q.trim().toLowerCase();
+  const from = f.days === "all" ? null : new Date(Date.now() - Number(f.days) * 86400000).toISOString();
+  return S.entnahmen.filter(e => (!f.team || e.teamId === f.team) && (!from || e.createdAt >= from)
+    && (!q || [e.objLabel, e.objAddress, e.auftragsNr, e.teamName].join(" ").toLowerCase().includes(q)));
+}
+function pchips(items) { return (items || []).map(i => `<span class="pchip"><i style="background:${esc(i.color || "#ccc")}"></i>${i.anzahl}× ${esc(i.name)} ${esc(i.dicke)}</span>`).join(""); }
+function listEntnahmen() {
+  const list = entFiltered();
+  if (!list.length) return `<div class="empty">Keine Entnahmen im gewählten Zeitraum.</div>`;
+  const sumP = list.reduce((a, e) => a + (e.totalPlatten || 0), 0), sumM = list.reduce((a, e) => a + (e.totalM2 || 0), 0);
+  return `<div class="tscroll"><table><thead><tr><th>Zeit</th><th>Gruppe</th><th>Objekt</th><th>Platten</th><th class="num">Stk</th><th class="num">m²</th><th></th></tr></thead><tbody>
+    ${list.map(e => `<tr><td style="white-space:nowrap">${esc(fmtDT(e.createdAt))}</td><td>${esc(e.teamName)}</td>
+      <td><b>${esc(e.objLabel)}</b>${e.auftragsNr ? `<br><span class="hint">${esc(e.auftragsNr)}</span>` : ""}${e.frei ? `<br><span class="hint">frei eingetragen</span>` : ""}</td>
+      <td>${pchips(e.items)}</td><td class="num">${e.totalPlatten}</td><td class="num">${fmtM2(e.totalM2)}</td>
+      <td><button class="x" data-act="eDel" data-id="${e.id}" aria-label="Löschen">×</button></td></tr>`).join("")}
+    </tbody><tfoot><tr><td colspan="4">${list.length} Entnahmen</td><td class="num">${sumP}</td><td class="num">${fmtM2(sumM)}</td><td></td></tr></tfoot></table></div>`;
+}
+function exportCSV() {
+  const list = entFiltered(); if (!list.length) return toast("Nichts zu exportieren", true);
+  const pl = plattenAll();
+  const head = ["Datum","Zeit","Gruppe","Objekt","Adresse","Auftrags-Nr", ...pl.map(plateLabel), "Total Platten", "Total m2"];
+  const q = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+  const rows = list.map(e => {
+    const d = new Date(e.createdAt);
+    const per = pl.map(p => { const it = (e.items || []).find(i => i.id === p.id); return it ? it.anzahl : ""; });
+    return [d.toLocaleDateString("de-CH"), d.toLocaleTimeString("de-CH", { hour:"2-digit", minute:"2-digit" }), e.teamName, e.objLabel, e.objAddress, e.auftragsNr, ...per, e.totalPlatten, String(e.totalM2).replace(".", ",")].map(q).join(";");
+  });
+  const blob = new Blob(["\uFEFF" + [head.map(q).join(";"), ...rows].join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "werkstatt-entnahmen-" + todayStr() + ".csv";
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+// ---- Lieferungen ----
+function tabLieferungen() {
+  return `<div class="grid2">
+    <section class="panel">
+      <h2>Lieferung ins Lager</h2>
+      <label class="field">Plattentyp<select id="lTyp">${plattenAll().map(p => `<option value="${esc(p.id)}">${esc(plateLabel(p))}</option>`).join("")}<option value="mix">Gemischt / nicht aufgeteilt</option></select></label>
+      <div class="row">
+        <label class="field">Menge in m²<input id="lM2" inputmode="decimal" autocomplete="off"></label>
+        <label class="field">Datum<input id="lDate" type="date" value="${todayStr()}"></label>
+      </div>
+      <label class="field">Lieferant / Lieferschein (optional)<input id="lNote" autocomplete="off"></label>
+      <button class="btn primary" style="width:100%" data-act="addLief">Lieferung speichern</button>
+      <p class="hint">Den aktuellen Lagerbestand einmal als Lieferung erfassen, damit der Bestand stimmt.</p>
+    </section>
+    <section id="aList"></section></div>`;
+}
+function addLieferung() {
+  const m2 = num($("#lM2").value);
+  if (m2 <= 0) { toast("Menge in m² eintragen", true); $("#lM2").focus(); return; }
+  const typId = $("#lTyp").value, p = plateById(typId);
+  const rec = { id: "lief-" + uid(), createdAt: new Date().toISOString(), datum: $("#lDate").value || todayStr(), ziel: "lager",
+    typId, typLabel: typId === "mix" ? "Gemischt" : plateLabel(p), m2: r1(m2), notiz: $("#lNote").value.trim(), erfasstVon: lsGet("werkstatt_by") };
+  db.collection(COL.lief).doc(rec.id).set(rec).catch(err => fsError(err, "Lieferung"));
+  $("#lM2").value = ""; $("#lNote").value = "";
+  toast("Lieferung gespeichert: " + fmtM2(rec.m2) + " m²");
+}
+function listLieferungen() {
+  const list = S.lieferungen.slice(0, 100);
+  if (!list.length) return `<div class="empty">Noch keine Lieferungen erfasst.</div>`;
+  return `<div class="tscroll"><table><thead><tr><th>Datum</th><th>Plattentyp</th><th class="num">m²</th><th>Notiz</th><th></th></tr></thead><tbody>
+    ${list.map(l => `<tr><td style="white-space:nowrap">${esc(fmtDay(l.datum))}</td>
+      <td>${esc(l.typLabel)}</td><td class="num">${fmtM2(l.m2)}</td><td>${esc(l.notiz)}</td>
+      <td><button class="x" data-act="lDel" data-id="${l.id}" aria-label="Löschen">×</button></td></tr>`).join("")}
+    </tbody></table></div>`;
+}
+
+// ---- Übersicht: Lager & Objekte ----
+function tabUebersicht() {
+  return `<div id="aList"></div>`;
+}
+function listUebersicht() {
+  // Lager
+  const zu = {}, ab = {};
+  S.lieferungen.forEach(l => zu[l.typId] = (zu[l.typId] || 0) + num(l.m2));
+  S.entnahmen.forEach(e => (e.items || []).forEach(i => ab[i.id] = (ab[i.id] || 0) + num(i.m2)));
+  const types = plattenAll().filter(p => p.active !== false || zu[p.id] || ab[p.id]);
+  const totZu = Object.values(zu).reduce((a, b) => a + b, 0), totAb = Object.values(ab).reduce((a, b) => a + b, 0);
+  const kpis = types.map(p => {
+    const best = (zu[p.id] || 0) - (ab[p.id] || 0);
+    return `<div class="kpi" style="--pc:${esc(p.color)}"><div class="edge"></div><div class="kpi-b">
+      <div class="kpi-n">${esc(plateLabel(p))}</div>
+      <div class="kpi-v ${best < 0 ? "neg" : ""}">${fmtM2(best)} m²</div>
+      <div class="kpi-s">${num(p.m2) ? "ca. " + Math.trunc(best / num(p.m2) + (best >= 0 ? 1e-6 : -1e-6)) + " Platten. " : ""}Zugang ${fmtM2(zu[p.id] || 0)}, entnommen ${fmtM2(ab[p.id] || 0)}</div></div></div>`;
+  }).join("");
+  const mix = zu.mix ? `<p class="hint">Dazu ${fmtM2(zu.mix)} m² als «gemischt» geliefert (nicht einem Typ zugeordnet). Gesamtbestand ${fmtM2(totZu - totAb)} m².</p>` : "";
+
+  // Objekte
+  const map = new Map();
+  const touch = (k, src) => {
+    if (!map.has(k)) map.set(k, { label: src.objLabel, address: src.objAddress, nr: src.auftragsNr, teams: new Set(), werkstatt: 0, platten: 0, last: "" });
+    const o = map.get(k); if (src.teamName) o.teams.add(src.teamName);
+    if (src.createdAt > o.last) o.last = src.createdAt; return o;
+  };
+  S.entnahmen.forEach(e => { const o = touch(e.objKey, e); o.werkstatt += num(e.totalM2); o.platten += e.totalPlatten || 0; });
+  const q = S.fObj.trim().toLowerCase();
+  const rows = [...map.values()].filter(o => !q || [o.label, o.address, o.nr, ...o.teams].join(" ").toLowerCase().includes(q)).sort((a, b) => a.last < b.last ? 1 : -1);
+
+  return `<section class="panel" style="margin-bottom:20px"><h2>Lagerbestand Werkstatt</h2>
+      ${types.length ? `<div class="kpis">${kpis}</div>` : ""}${mix}
+      <p class="hint">Bestand = Lieferungen ins Lager minus Entnahmen am Tablet. Rot heisst: mehr entnommen als erfasst geliefert.</p></section>
+    <section class="panel"><h2>Material pro Objekt</h2>
+      <div class="filters"><input class="inp" style="flex:1" id="fObj" data-input="fObj" placeholder="Objekt, Gruppe oder Auftrags-Nr." value="${esc(S.fObj)}"></div>
+      ${rows.length ? `<div class="tscroll"><table><thead><tr><th>Objekt</th><th>Gruppe</th><th class="num">Platten</th><th class="num">m² aus Werkstatt</th><th>Zuletzt</th></tr></thead><tbody>
+        ${rows.map(o => `<tr><td><b>${esc(o.label)}</b>${o.nr ? `<br><span class="hint">${esc(o.nr)}</span>` : o.address ? `<br><span class="hint">${esc(o.address)}</span>` : ""}</td>
+          <td>${esc([...o.teams].join(", "))}</td><td class="num">${o.platten}</td><td class="num"><b>${fmtM2(o.werkstatt)}</b></td><td style="white-space:nowrap">${esc(fmtDT(o.last))}</td></tr>`).join("")}
+      </tbody></table></div>` : `<div class="empty">Noch keine Daten pro Objekt.</div>`}
+    </section>`;
+}
+
+// ---- Einstellungen ----
+function tabEinstellungen() {
+  const c = S.editCfg;
+  return `<div class="grid2" style="grid-template-columns:1.4fr 1fr">
+    <section class="panel"><h2>Plattentypen am Tablet</h2>
+      <div class="cfg-row"><span class="cfg-h">Name</span><span class="cfg-h">Dicke</span><span class="cfg-h">m²/Platte</span><span class="cfg-h">Farbe</span><span class="cfg-h">Aktiv</span><span></span></div>
+      ${c.platten.map((p, i) => `<div class="cfg-row" data-pi="${i}">
+        <input class="inp" data-f="name" value="${esc(p.name)}"><input class="inp" data-f="dicke" value="${esc(p.dicke)}">
+        <input class="inp" data-f="m2" inputmode="decimal" value="${esc(p.m2)}"><input type="color" data-f="color" value="${esc(p.color)}">
+        <input type="checkbox" data-f="active" style="width:26px;height:26px" ${p.active !== false ? "checked" : ""}>
+        <button class="x" data-act="cfgDelP" data-i="${i}" aria-label="Entfernen">×</button></div>`).join("")}
+      <button class="btn small" data-act="cfgAddP">Plattentyp hinzufügen</button>
+      <p class="hint">m² pro Platte: z.B. 1250 × 2000 mm = 2.5 m². Inaktive Typen erscheinen nicht mehr am Tablet, bleiben aber in der Auswertung.</p>
+    </section>
+    <section class="panel"><h2>Material für Bestellungen</h2>
+      <div class="cfg-row mat"><span class="cfg-h">Material</span><span class="cfg-h">Einheit</span><span></span></div>
+      ${c.material.map((m, i) => `<div class="cfg-row mat" data-mi="${i}"><input class="inp" data-f="name" value="${esc(m.name)}">
+        <select class="inp" data-f="unit">${UNITS.map(u => `<option ${u === m.unit ? "selected" : ""}>${u}</option>`).join("")}</select>
+        <button class="x" data-act="cfgDelM" data-i="${i}" aria-label="Entfernen">×</button></div>`).join("")}
+      <button class="btn small" data-act="cfgAddM">Material hinzufügen</button>
+      <h3>Tablet</h3>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn small" data-act="fullscreen">Vollbild</button><button class="btn danger small" data-act="signOut">Tablet trennen</button></div>
+    </section></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn ghost" data-act="cfgReset">Änderungen verwerfen</button>
+      <button class="btn primary" data-act="cfgSave">Einstellungen speichern</button></div>`;
+}
+function readCfgForm() {
+  const c = S.editCfg;
+  document.querySelectorAll("[data-pi]").forEach(row => {
+    const p = c.platten[+row.dataset.pi]; if (!p) return;
+    p.name = row.querySelector('[data-f="name"]').value.trim();
+    p.dicke = row.querySelector('[data-f="dicke"]').value.trim();
+    p.m2 = num(row.querySelector('[data-f="m2"]').value);
+    p.color = row.querySelector('[data-f="color"]').value;
+    p.active = row.querySelector('[data-f="active"]').checked;
+  });
+  document.querySelectorAll("[data-mi]").forEach(row => {
+    const m = c.material[+row.dataset.mi]; if (!m) return;
+    m.name = row.querySelector('[data-f="name"]').value.trim();
+    m.unit = row.querySelector('[data-f="unit"]').value;
+  });
+}
+function saveCfg() {
+  readCfgForm();
+  const c = S.editCfg;
+  const platten = c.platten.filter(p => p.name);
+  if (platten.some(p => !(p.m2 > 0))) { toast("Bei jedem Plattentyp m² pro Platte eintragen", true); return; }
+  const data = { platten, material: c.material.filter(m => m.name), updatedAt: new Date().toISOString() };
+  db.collection(COL.cfg).doc("settings").set(data).then(() => toast("Einstellungen gespeichert")).catch(err => fsError(err, "Einstellungen"));
+  S.cfg = { platten: data.platten, material: data.material };
+  S.editCfg = JSON.parse(JSON.stringify(S.cfg)); renderAdminBody();
+}
+
+// ============================================================
+// Events
+// ============================================================
+const ACT = {
+  key: el => pressKey(el.dataset.k),
+  home: () => resetToHome(),
+  objType: el => { S.objType = el.dataset.v; render(); },
+  objAll: el => { S.objAll = el.dataset.v === "1"; render(); },
+  pickObj: el => pickObject(el.dataset.id),
+  freeObj: () => openModal({ type: "free" }),
+  freeOk: () => {
+    const v = ($("#freeInp").value || "").trim(); if (!v) return $("#freeInp").focus();
+    S.object = { key: "F:" + v.toLowerCase(), label: v, address: "", auftragsNr: "", free: true }; S.qty = {};
+    closeModal(); go("plates");
+  },
+  backObj: () => { S.object = null; go("objects"); },
+  inc: el => changeQty(el.dataset.id, Number(el.dataset.n)),
+  qtyPad: el => openModal({ type: "qty", id: el.dataset.id, val: "" }),
+  qkey: el => {
+    const k = el.dataset.k, m = S.modal;
+    if (k === "C") m.val = ""; else if (k === "⌫") m.val = m.val.slice(0, -1); else if (m.val.length < 3) m.val = (m.val + k).replace(/^0+(?=\d)/, "");
+    $("#qtyVal").textContent = m.val || "0";
+  },
+  qtyOk: () => { const m = S.modal; S.qty[m.id] = Math.min(999, parseInt(m.val || "0", 10) || 0); closeModal(); render(); },
+  modalClose: () => closeModal(),
+  confirmOk: () => { const fn = S.modal && S.modal.fn; closeModal(); if (fn) fn(); },
+  save: () => saveEntnahme(),
+  undo: () => undoEntnahme(),
+  // Admin
+  tab: el => { S.adminTab = el.dataset.v; if (S.adminTab !== "einstellungen") S.editCfg = null; renderAdminBody(); $("#aMain").scrollTop = 0; },
+  logoutAdmin: () => logoutAdmin(),
+  pickMat: el => {
+    const m = S.cfg.material[+el.dataset.i]; if (!m) return;
+    $("#bMat").value = m.name; if (UNITS.includes(m.unit)) $("#bUnit").value = m.unit;
+    document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === el)); $("#bQty").focus();
+  },
+  addBest: () => addBestellung(),
+  bStatus: el => setBestStatus(el.dataset.id, el.dataset.v),
+  bDel: el => confirmDlg("Bestellung löschen?", "Der Eintrag wird für alle entfernt.", "Löschen", () => db.collection(COL.best).doc(el.dataset.id).delete().catch(err => fsError(err, "Löschen"))),
+  eDel: el => confirmDlg("Entnahme löschen?", "Nur bei Fehleingaben löschen. Der Lagerbestand wird angepasst.", "Löschen", () => db.collection(COL.ent).doc(el.dataset.id).delete().catch(err => fsError(err, "Löschen"))),
+  lDel: el => confirmDlg("Lieferung löschen?", "Der Eintrag wird für alle entfernt.", "Löschen", () => db.collection(COL.lief).doc(el.dataset.id).delete().catch(err => fsError(err, "Löschen"))),
+  csv: () => exportCSV(),
+  addLief: () => addLieferung(),
+  cfgAddP: () => { readCfgForm(); S.editCfg.platten.push({ id: "p-" + uid(), name: "", dicke: "", m2: 2.5, color: "#CCCCCC", active: true }); renderAdminBody(); },
+  cfgDelP: el => { readCfgForm(); S.editCfg.platten.splice(+el.dataset.i, 1); renderAdminBody(); },
+  cfgAddM: () => { readCfgForm(); S.editCfg.material.push({ name: "", unit: "Stk" }); renderAdminBody(); },
+  cfgDelM: el => { readCfgForm(); S.editCfg.material.splice(+el.dataset.i, 1); renderAdminBody(); },
+  cfgReset: () => { S.editCfg = null; renderAdminBody(); },
+  cfgSave: () => saveCfg(),
+  fullscreen: () => { const d = document.documentElement; (d.requestFullscreen || d.webkitRequestFullscreen || (() => toast("Vollbild wird hier nicht unterstützt", true))).call(d); },
+  signOut: () => confirmDlg("Tablet trennen?", "Danach muss der Zugangscode erneut eingegeben werden.", "Trennen", () => { logoutAdmin(); auth.signOut(); })
+};
+const INPUT = {
+  objSearch: el => { S.objSearch = el.value; refreshObjList(); },
+  fQ: el => { S.fEnt.q = el.value; adminRefresh(); },
+  fObj: el => {
+    S.fObj = el.value;
+    const pos = el.selectionStart; adminRefresh();
+    const n = $("#fObj"); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch(e) {} }
+  }
+};
+const CHANGE = {
+  stay: el => { S.stay = el.checked; lsSet("werkstatt_stay", S.stay ? "1" : "0"); },
+  fTeam: el => { S.fEnt.team = el.value; adminRefresh(); },
+  fDays: el => { S.fEnt.days = el.value; adminRefresh(); }
+};
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el || el.disabled) return;
+  const fn = ACT[el.dataset.act]; if (fn) fn(el, e);
+});
+document.addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.input; if (k && INPUT[k]) INPUT[k](e.target); });
+document.addEventListener("change", e => { const k = e.target.dataset && e.target.dataset.change; if (k && CHANGE[k]) CHANGE[k](e.target); });
+document.addEventListener("keydown", e => {
+  if (S.modal) {
+    if (e.key === "Escape") closeModal();
+    else if (e.key === "Enter" && S.modal.type === "free") ACT.freeOk();
+    else if (S.modal.type === "qty") {
+      if (/^\d$/.test(e.key)) ACT.qkey({ dataset: { k: e.key } });
+      else if (e.key === "Backspace") ACT.qkey({ dataset: { k: "⌫" } });
+      else if (e.key === "Enter") ACT.qtyOk();
+    }
+    return;
+  }
+  if ((S.view === "home" || S.view === "gate") && !e.target.closest("input,select,textarea")) {
+    if (/^\d$/.test(e.key)) { e.preventDefault(); pressKey(e.key); }
+    else if (e.key === "Backspace") { e.preventDefault(); pressKey("⌫"); }
+    else if (e.key === "Escape") pressKey("C");
+  }
+});
+
+// ---------- Kiosk: Inaktivität, Bildschirm wach halten ----------
+let lastAct = Date.now();
+["pointerdown", "keydown"].forEach(ev => document.addEventListener(ev, () => { lastAct = Date.now(); requestWake(); }, true));
+setInterval(() => {
+  const idle = Date.now() - lastAct;
+  if (["objects", "plates"].includes(S.view) && idle > 120000) { toast("Abgebrochen wegen Inaktivität"); resetToHome(); }
+  if (S.view === "admin" && !S.stay && idle > 600000) logoutAdmin();
+  if (S.view === "home" && idle > 60000 && (S.pin || S.pinMsg)) { S.pin = ""; S.pinMsg = ""; updatePinUI(); }
+}, 5000);
+let wakeLock = null;
+async function requestWake() {
+  if (wakeLock || !("wakeLock" in navigator)) return;
+  try { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => wakeLock = null); } catch(e) {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") requestWake(); });
+
+render();
+</script>
+</body>
+</html>
