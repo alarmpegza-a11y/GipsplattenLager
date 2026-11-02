@@ -215,7 +215,7 @@ tfoot td{font-weight:700;background:var(--board)}
 .kpi-s{font-size:13px;color:var(--steel)}
 .hint{color:var(--steel);font-size:14px;margin:6px 0 0}
 .cfg-row{display:grid;grid-template-columns:1.2fr .8fr 1fr 80px 54px 56px 44px;gap:8px;align-items:center;margin-bottom:8px}
-.cfg-row.mat{grid-template-columns:1.8fr 1fr .9fr .7fr .7fr 44px}
+.cfg-row.mat{grid-template-columns:1.7fr 1fr .9fr .6fr .6fr 1.2fr 44px}
 .cfg-row .inp{height:46px;font-size:16px;width:100%}
 .cfg-row input[type=color]{height:46px;width:54px;padding:2px;border:2px solid var(--line);border-radius:9px;background:var(--white)}
 .cfg-h{font-size:13px;font-weight:700;color:var(--steel)}
@@ -283,12 +283,12 @@ const DEFAULT_PLATTEN = [
 // Knauf-Materialliste (Artikel-Nr. aus Materialliste_Ajdin.xlsx, Texte/Einheiten aus dem Knauf-Bestellformular)
 // m2Stk gesetzt = Platten: Menge geht in m² auf das Knauf-Formular (Einheit M2 laut Formular)
 const DEFAULT_MATERIAL = [
-  { name:"GKBI 12.5 mm (2000×1250)", artNr:"48498", unit:"Stk", palStk:24, m2Stk:2.5, knaufUnit:"M2", knaufText:"Bauplatte imprägniert GKBI;2000x1250x12.5 mm HRAK, 24 Stk/Pal." },
-  { name:"GKBI 18 mm (2600×625)", artNr:"2937", unit:"Stk", palStk:30, m2Stk:1.625, knaufUnit:"M2", knaufText:"Massivbauplatte imprägniert GKBI;2600x625x18 mm HRAK, 30 Stk./Pal." },
-  { name:"Diamant 12.5 mm (2000×1250)", artNr:"72184", unit:"Stk", palStk:40, m2Stk:2.5, knaufUnit:"M2", knaufText:"Diamant-Hartgipsplatte imprägniert GKFI;2000x1250x12.5 mm HRAK, 40 St./Pal." },
-  { name:"Aquapanel 12.5 mm (1250×900)", artNr:"508261", unit:"Stk", palStk:55, m2Stk:1.125, knaufUnit:"M2", knaufText:"Aquapanel Cementboard Indoor;1250x900x12.5 mm, Easy Edge;55 Stk./Pal." },
+  { name:"GKBI 12.5 mm (2000×1250)", artNr:"48498", lagerTyp:"gkb125", unit:"Stk", palStk:24, m2Stk:2.5, knaufUnit:"M2", knaufText:"Bauplatte imprägniert GKBI;2000x1250x12.5 mm HRAK, 24 Stk/Pal." },
+  { name:"GKBI 18 mm (2600×625)", artNr:"2937", lagerTyp:"gkb18", unit:"Stk", palStk:30, m2Stk:1.625, knaufUnit:"M2", knaufText:"Massivbauplatte imprägniert GKBI;2600x625x18 mm HRAK, 30 Stk./Pal." },
+  { name:"Diamant 12.5 mm (2000×1250)", artNr:"72184", lagerTyp:"diamant125", unit:"Stk", palStk:40, m2Stk:2.5, knaufUnit:"M2", knaufText:"Diamant-Hartgipsplatte imprägniert GKFI;2000x1250x12.5 mm HRAK, 40 St./Pal." },
+  { name:"Aquapanel 12.5 mm (1250×900)", artNr:"508261", lagerTyp:"aqua125", unit:"Stk", palStk:55, m2Stk:1.125, knaufUnit:"M2", knaufText:"Aquapanel Cementboard Indoor;1250x900x12.5 mm, Easy Edge;55 Stk./Pal." },
   { name:"Silentboard GKF 12.5 mm (2000×625)", artNr:"413365", unit:"Stk", palStk:42, m2Stk:1.25, knaufUnit:"M2", knaufText:"Silentboard GKF 12.5;2000x625x12.5 mm HRAK, 42 Stk./Pal." },
-  { name:"GKF Piano 12.5 mm (2000×1250)", artNr:"2891", unit:"Stk", palStk:50, m2Stk:2.5, knaufUnit:"M2", knaufText:"Feuerschutzplatte GKF;2000x1250x12.5 mm HRAK, 50 Stk./Pal." },
+  { name:"GKF Piano 12.5 mm (2000×1250)", artNr:"2891", lagerTyp:"gkf125", unit:"Stk", palStk:50, m2Stk:2.5, knaufUnit:"M2", knaufText:"Feuerschutzplatte GKF;2000x1250x12.5 mm HRAK, 50 Stk./Pal." },
   { name:"Diamantschrauben 3.9×38 mm", artNr:"669562", unit:"Pak", knaufUnit:"PAK", knaufText:"Diamantschrauben 3.9 x 38 mm, 1000 Stk./Pack" },
   { name:"Schrauben 35 mm", artNr:"3509", unit:"Pak", knaufUnit:"PAK", knaufText:"Schnellbauschrauben Teks mit Bohrspitze;auf Metall bis 2.25mm 35x3.5 mm / 1000 Stk./Pak." },
   { name:"Schrauben 45 mm", artNr:"3510", unit:"Pak", knaufUnit:"PAK", knaufText:"Schnellbauschrauben Teks mit Bohrspitze;auf Metall bis 2.25mm 45x3.5 mm / 1000 Stk./Pak." },
@@ -374,7 +374,11 @@ function startBase() {
   baseUnsubs.push(db.collection(COL.cfg).doc("settings").onSnapshot(doc => {
     const d = doc.exists ? doc.data() : {};
     const pl = (d.platten && d.platten.length ? d.platten : DEFAULT_PLATTEN).map(p => p.id === "aqua18" ? { ...p, artNr: p.artNr || AQUA18_ARTNR, abzug: true } : p);
-    S.cfg = { platten: pl, material: d.materialV2 && d.material && d.material.length ? d.material : DEFAULT_MATERIAL };
+    const mats = (d.materialV2 && d.material && d.material.length ? d.material : DEFAULT_MATERIAL).map(m => {
+      const def = m.artNr ? DEFAULT_MATERIAL.find(x => x.artNr && x.artNr === String(m.artNr)) : null;
+      return def ? { ...def, ...m, lagerTyp: m.lagerTyp !== undefined ? m.lagerTyp : def.lagerTyp } : m;
+    });
+    S.cfg = { platten: pl, material: mats };
     if (S.view === "plates") render();
     if (S.view === "admin" && S.adminTab !== "einstellungen") renderAdminBody();
   }, err => fsError(err, "Einstellungen")));
@@ -840,7 +844,8 @@ function bestItem(b) {
   if (b.status === "offen") actions = `<button class="btn dark small" data-act="bAccept" data-id="${b.id}">Entgegennehmen</button>`;
   else if (b.status === "bestellt") actions = `<button class="btn ghost small" data-act="bStatus" data-id="${b.id}" data-v="${b.lieferdatum ? "angenommen" : "offen"}">Zurück</button><button class="btn dark small" data-act="bStatus" data-id="${b.id}" data-v="geliefert">Geliefert</button>`;
   actions += `<button class="x" data-act="bDel" data-id="${b.id}" aria-label="Löschen">×</button>`;
-  const art = b.artNr ? `<span class="hint" style="margin-left:8px">Knauf ${esc(b.artNr)}${b.knaufMenge != null ? ", " + esc(fmtKnaufQty(b)) : ""}</span>` : (b.status === "offen" ? `<span class="tag" style="background:#E8EAEC;color:#5E6A70">ohne Knauf-Nr.</span>` : "");
+  const lagerTxt = b.lagerLiefId ? (() => { const l = S.lieferungen.find(x => x.id === b.lagerLiefId); return l ? ", Lager +" + fmtM2(l.m2) + " m²" : ""; })() : "";
+  const art = b.artNr ? `<span class="hint" style="margin-left:8px">Knauf ${esc(b.artNr)}${b.knaufMenge != null ? ", " + esc(fmtKnaufQty(b)) : ""}${esc(lagerTxt)}</span>` : (b.status === "offen" ? `<span class="tag" style="background:#E8EAEC;color:#5E6A70">ohne Knauf-Nr.</span>` : "");
   return `<div class="item ${b.dringend && b.status === "offen" ? "urgent" : ""}">
     <div><div class="item-t"><span class="q">${esc(b.menge)} ${esc(b.einheit)}</span>${esc(b.material)}${b.dringend && b.status !== "geliefert" ? `<span class="tag">Dringend</span>` : ""}${art}</div>
     <div class="item-s">${esc(meta)}</div></div>
@@ -872,7 +877,7 @@ function knaufCard(date, list) {
       ${files > 1 ? `<p class="hint">${lines.length} Positionen: Das Knauf-Formular hat ${KNAUF_ROWS.length} Zeilen, es werden ${files} Dateien erstellt.</p>` : ""}` : `<div class="empty">Keine Knauf-Artikel für dieses Datum.</div>`}
     <div class="group-h"><h3 style="font-size:18px">Enthaltene Bestellungen</h3><span>${knauf.length}</span></div>
     ${knauf.map(b => `<div class="item"><div><div class="item-t"><span class="q">${esc(b.menge)} ${esc(b.einheit)}</span>${esc(b.material)}</div>
-      <div class="item-s">${esc([b.objekt, b.notiz, (b.erfasstVon || "") + (b.angenommenAt ? ", entgegengenommen " + fmtDT(b.angenommenAt) : "")].filter(Boolean).join(". "))}</div></div>
+      <div class="item-s">${esc([b.objekt, b.notiz, (b.erfasstVon || "") + (b.angenommenAt ? ", entgegengenommen " + fmtDT(b.angenommenAt) : ""), (() => { const l = b.lagerLiefId && S.lieferungen.find(x => x.id === b.lagerLiefId); return l ? "Lager +" + fmtM2(l.m2) + " m² " + l.typLabel : ""; })()].filter(Boolean).join(". "))}</div></div>
       <div class="item-a"><button class="btn ghost small" data-act="bStatus" data-id="${b.id}" data-v="offen">Zurück</button></div></div>`).join("")}
     ${other.length ? `<div class="group-h"><h3 style="font-size:18px">Nicht auf dem Knauf-Formular</h3><span>${other.length}</span></div>
       ${other.map(b => `<div class="item"><div><div class="item-t"><span class="q">${esc(b.menge)} ${esc(b.einheit)}</span>${esc(b.material)}</div>
@@ -892,7 +897,7 @@ function listBestellungen() {
   const byDate = {}; angen.forEach(b => (byDate[b.lieferdatum || todayStr()] = byDate[b.lieferdatum || todayStr()] || []).push(b));
   const grp = (title, arr, emptyTxt) => `<div class="group-h"><h3>${title}</h3><span>${arr.length}</span></div>${arr.length ? arr.map(bestItem).join("") : `<div class="empty">${emptyTxt}</div>`}`;
   return `<div class="panel" style="margin-bottom:16px">${grp("Neu, zum Entgegennehmen", offen, "Keine neuen Bestellungen.")}
-      ${offen.length ? `<p class="hint">Beim Entgegennehmen wird die Lieferung auf ${esc(fmtDay(lieferDatumAb(new Date())))} gesetzt (heute + 2 Tage, Wochenende auf Montag).</p>` : ""}</div>
+      ${offen.length ? `<p class="hint">Beim Entgegennehmen wird die Lieferung auf ${esc(fmtDay(lieferDatumAb(new Date())))} gesetzt (heute + 2 Tage, Wochenende auf Montag) und bestellte Platten werden sofort im Lager aufgestockt.</p>` : ""}</div>
     ${Object.keys(byDate).sort().map(d => knaufCard(d, byDate[d])).join("")}
     <div class="panel">${grp("Bestellt, Lieferung ausstehend", bestellt, "Keine laufenden Bestellungen.")}${geliefert.length ? grp("Zuletzt geliefert", geliefert, "") : ""}</div>`;
 }
@@ -913,31 +918,75 @@ function addBestellung() {
   toast("Auf der Bestellliste: " + rec.menge + " " + rec.einheit + " " + rec.material);
 }
 function setBestStatus(id, st) {
+  if (st === "offen") return reopenBestellung(id);
   const upd = { status: st };
   if (st === "bestellt") upd.bestelltAt = new Date().toISOString();
   if (st === "geliefert") upd.geliefertAt = new Date().toISOString();
   db.collection(COL.best).doc(id).update(upd).catch(err => fsError(err, "Status"));
+}
+// ---- Lager automatisch aufstocken, sobald eine Plattenbestellung entgegengenommen wird ----
+function lagerRecFor(b) {
+  // b = Bestellung inkl. Knauf-Feldern; nur Platten (M2) mit zugeordnetem Werkstatt-Plattentyp
+  const m = matByName(b.material);
+  const typId = m && m.lagerTyp;
+  const p = typId ? plateById(typId) : null;
+  if (!p || b.knaufEinheit !== "M2" || !(num(b.knaufMenge) > 0)) return null;
+  return { id: "lief-" + uid(), createdAt: new Date().toISOString(), datum: b.lieferdatum || todayStr(), ziel: "lager",
+    typId: p.id, typLabel: plateLabel(p), m2: r1(b.knaufMenge),
+    notiz: `Knauf-Bestellung (automatisch): ${b.menge} ${b.einheit} ${b.material}${b.artNr ? ", Art. " + b.artNr : ""}`,
+    erfasstVon: lsGet("werkstatt_by"), bestellungId: b.id, auto: true };
 }
 function acceptBestellung(id) {
   const b = S.bestellungen.find(x => x.id === id); if (!b) return;
   const upd = { status: "angenommen", angenommenAt: new Date().toISOString(), lieferdatum: lieferDatumAb(new Date()) };
   // ältere Bestellungen ohne Knauf-Daten: aus der Materialliste nachtragen
   if (!b.artNr) { const m = matByName(b.material); if (m && m.artNr) Object.assign(upd, knaufFields(m, b.menge, b.einheit)); }
-  db.collection(COL.best).doc(id).update(upd).then(() => toast("Entgegengenommen, Lieferung " + fmtDay(upd.lieferdatum))).catch(err => fsError(err, "Entgegennehmen"));
+  const batch = db.batch();
+  if (b.lagerLiefId) batch.delete(db.collection(COL.lief).doc(b.lagerLiefId));
+  const lr = lagerRecFor({ ...b, ...upd });
+  upd.lagerLiefId = lr ? lr.id : null;
+  if (lr) batch.set(db.collection(COL.lief).doc(lr.id), lr);
+  batch.update(db.collection(COL.best).doc(id), upd);
+  batch.commit().then(() => toast("Entgegengenommen, Lieferung " + fmtDay(upd.lieferdatum) + (lr ? ". Lager +" + fmtM2(lr.m2) + " m² " + lr.typLabel : "")))
+    .catch(err => fsError(err, "Entgegennehmen"));
+}
+function reopenBestellung(id) {
+  const b = S.bestellungen.find(x => x.id === id); if (!b) return;
+  const batch = db.batch();
+  if (b.lagerLiefId) batch.delete(db.collection(COL.lief).doc(b.lagerLiefId));
+  batch.update(db.collection(COL.best).doc(id), { status: "offen", lagerLiefId: null });
+  batch.commit().then(() => { if (b.lagerLiefId) toast("Zurück auf neu. Lagerbuchung entfernt."); }).catch(err => fsError(err, "Status"));
+}
+function deleteBestellung(id) {
+  const b = S.bestellungen.find(x => x.id === id);
+  const batch = db.batch();
+  if (b && b.lagerLiefId && b.status !== "geliefert") batch.delete(db.collection(COL.lief).doc(b.lagerLiefId));
+  batch.delete(db.collection(COL.best).doc(id));
+  batch.commit().catch(err => fsError(err, "Löschen"));
 }
 function changeKnaufDate(oldD, newD) {
   if (!newD || newD === oldD) return;
   const list = S.bestellungen.filter(b => b.status === "angenommen" && (b.lieferdatum || todayStr()) === oldD);
   const batch = db.batch();
-  list.forEach(b => batch.update(db.collection(COL.best).doc(b.id), { lieferdatum: newD }));
+  list.forEach(b => {
+    batch.update(db.collection(COL.best).doc(b.id), { lieferdatum: newD });
+    if (b.lagerLiefId && S.lieferungen.some(l => l.id === b.lagerLiefId)) batch.update(db.collection(COL.lief).doc(b.lagerLiefId), { datum: newD });
+  });
   batch.commit().then(() => toast("Lieferdatum geändert: " + fmtDay(newD))).catch(err => fsError(err, "Lieferdatum"));
 }
 function assignKnauf(id, name) {
   const b = S.bestellungen.find(x => x.id === id), m = matByName(name); if (!b || !m) return;
   let einheit = b.einheit;
   if (!unitsFor(m).includes(einheit)) einheit = unitsFor(m)[0];
-  db.collection(COL.best).doc(id).update({ material: m.name, einheit, ...knaufFields(m, b.menge, einheit) })
-    .then(() => toast("Zugeordnet: " + m.name + " (" + m.artNr + ")")).catch(err => fsError(err, "Zuordnen"));
+  const upd = { material: m.name, einheit, ...knaufFields(m, b.menge, einheit) };
+  const batch = db.batch();
+  if (b.lagerLiefId) batch.delete(db.collection(COL.lief).doc(b.lagerLiefId));
+  const lr = b.status === "angenommen" ? lagerRecFor({ ...b, ...upd }) : null;
+  upd.lagerLiefId = lr ? lr.id : null;
+  if (lr) batch.set(db.collection(COL.lief).doc(lr.id), lr);
+  batch.update(db.collection(COL.best).doc(id), upd);
+  batch.commit().then(() => toast("Zugeordnet: " + m.name + " (" + m.artNr + ")" + (lr ? ". Lager +" + fmtM2(lr.m2) + " m²" : "")))
+    .catch(err => fsError(err, "Zuordnen"));
 }
 
 // ---- Knauf-Bestellformular (Excel-Vorlage wird direkt befüllt, Layout & Kästchen bleiben erhalten) ----
@@ -1142,7 +1191,7 @@ function listUebersicht() {
 // ---- Einstellungen ----
 function tabEinstellungen() {
   const c = S.editCfg;
-  return `<div class="grid2" style="grid-template-columns:1fr 1fr">
+  return `<div class="grid2" style="grid-template-columns:1fr">
     <section class="panel"><h2>Plattentypen am Tablet</h2>
       <div class="cfg-row"><span class="cfg-h">Name</span><span class="cfg-h">Dicke</span><span class="cfg-h">Art.-Nr.</span><span class="cfg-h">m²/Platte</span><span class="cfg-h">Farbe</span><span class="cfg-h">Aktiv</span><span></span></div>
       ${c.platten.map((p, i) => `<div class="cfg-row" data-pi="${i}">
@@ -1154,15 +1203,16 @@ function tabEinstellungen() {
       <p class="hint">m² pro Platte: z.B. 1250 × 2000 mm = 2.5 m². Inaktive Typen erscheinen nicht mehr am Tablet, bleiben aber in der Auswertung. Aquapanel 18 mm wird in der Abrechnung immer als Materialabzug markiert.</p>
     </section>
     <section class="panel"><h2>Material für Bestellungen</h2>
-      <div class="cfg-row mat"><span class="cfg-h">Material</span><span class="cfg-h">Knauf Art.-Nr.</span><span class="cfg-h">Einheit</span><span class="cfg-h">Stk/Pal</span><span class="cfg-h">m²/Stk</span><span></span></div>
+      <div class="cfg-row mat"><span class="cfg-h">Material</span><span class="cfg-h">Knauf Art.-Nr.</span><span class="cfg-h">Einheit</span><span class="cfg-h">Stk/Pal</span><span class="cfg-h">m²/Stk</span><span class="cfg-h">Lager-Typ</span><span></span></div>
       ${c.material.map((m, i) => `<div class="cfg-row mat" data-mi="${i}"><input class="inp" data-f="name" value="${esc(m.name)}">
         <input class="inp" data-f="artNr" value="${esc(m.artNr || "")}">
         <select class="inp" data-f="unit">${UNITS.map(u => `<option ${u === m.unit ? "selected" : ""}>${u}</option>`).join("")}</select>
         <input class="inp" data-f="palStk" inputmode="numeric" value="${esc(m.palStk || "")}">
         <input class="inp" data-f="m2Stk" inputmode="decimal" value="${esc(m.m2Stk || "")}">
+        <select class="inp" data-f="lagerTyp"><option value="">kein Lager</option>${c.platten.map(p => `<option value="${esc(p.id)}" ${p.id === m.lagerTyp ? "selected" : ""}>${esc(plateLabel(p))}</option>`).join("")}</select>
         <button class="x" data-act="cfgDelM" data-i="${i}" aria-label="Entfernen">×</button></div>`).join("")}
       <button class="btn small" data-act="cfgAddM">Material hinzufügen</button>
-      <p class="hint">Mit m²/Stk wird das Material als Platte behandelt: Bestellung in Stk, Palette oder m², auf dem Knauf-Formular in m². Ohne Art.-Nr. erscheint es nicht auf dem Knauf-Formular.</p>
+      <p class="hint">Mit m²/Stk wird das Material als Platte behandelt: Bestellung in Stk, Palette oder m², auf dem Knauf-Formular in m². Ohne Art.-Nr. erscheint es nicht auf dem Knauf-Formular. Lager-Typ: auf welchen Plattentyp der Werkstatt die bestellten m² beim Entgegennehmen gebucht werden.</p>
       <h3>Tablet</h3>
       <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn small" data-act="fullscreen">Vollbild</button><button class="btn danger small" data-act="signOut">Tablet trennen</button></div>
     </section></div>
@@ -1189,6 +1239,7 @@ function readCfgForm() {
     m.palStk = num(row.querySelector('[data-f="palStk"]').value) || null;
     m.m2Stk = num(row.querySelector('[data-f="m2Stk"]').value) || null;
     if (m.m2Stk) m.knaufUnit = "M2";
+    m.lagerTyp = row.querySelector('[data-f="lagerTyp"]').value;
   });
 }
 function saveCfg() {
@@ -1243,7 +1294,7 @@ const ACT = {
   knaufExport: el => exportKnauf(el.dataset.d),
   addBest: () => addBestellung(),
   bStatus: el => setBestStatus(el.dataset.id, el.dataset.v),
-  bDel: el => confirmDlg("Bestellung löschen?", "Der Eintrag wird für alle entfernt.", "Löschen", () => db.collection(COL.best).doc(el.dataset.id).delete().catch(err => fsError(err, "Löschen"))),
+  bDel: el => confirmDlg("Bestellung löschen?", "Der Eintrag wird für alle entfernt. Eine automatische Lagerbuchung wird ebenfalls entfernt (ausser die Ware ist schon geliefert).", "Löschen", () => deleteBestellung(el.dataset.id)),
   eDel: el => confirmDlg("Entnahme löschen?", "Nur bei Fehleingaben löschen. Der Lagerbestand wird angepasst.", "Löschen", () => db.collection(COL.ent).doc(el.dataset.id).delete().catch(err => fsError(err, "Löschen"))),
   lDel: el => confirmDlg("Lieferung löschen?", "Der Eintrag wird für alle entfernt.", "Löschen", () => db.collection(COL.lief).doc(el.dataset.id).delete().catch(err => fsError(err, "Löschen"))),
   csv: () => exportCSV(),
